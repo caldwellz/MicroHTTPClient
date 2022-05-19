@@ -1,4 +1,4 @@
-project('', ['c', 'cpp']
+project('MHC', ['c', 'cpp']
   , version : '0.0.1'
   , default_options : ['buildtype=debug', 'warning_level=3', 'cpp_eh=none', 'cpp_rtti=false', 'cpp_std=c++14', 'prefix=/usr/local'])
 

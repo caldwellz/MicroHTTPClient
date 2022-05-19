@@ -2,21 +2,9 @@
 cppcomp = meson.get_compiler('cpp')
 
 
-# Find dependencies
-# Example of a required library with a subproject fallback
-libfoo_dep = dependency('libfoo', required : false)
-if not libfoo_dep.found()
-    libfoo_dep = cppcomp.find_library('foo', has_headers : ['foo.h'], required : false)
-    if not libfoo_dep.found()
-        libfoo_proj = subproject('foo')
-        libfoo_dep = libfoo_proj.get_variable('libfoo_dep')
-    endif
-endif
-
-
 # List sources and dependencies - version file comes later
 lib_srcs = files([])
-lib_deps = [libfoo_dep]
+lib_deps = []
 
 
 # These arguments are only used to build the library
