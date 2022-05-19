@@ -1,0 +1,1 @@
+option('BUILD_TESTS', type : 'boolean', value : true)

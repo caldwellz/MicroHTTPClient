@@ -1,0 +1,49 @@
+/***************************************************
+* config.h: Build-time configuration               *
+* Copyright (C)                                    *
+****************************************************
+* This Source Code Form is subject to the terms of *
+* the Mozilla Public License, v. 2.0. If a copy of *
+* the MPL was not distributed with this file, You  *
+* can obtain one at http://mozilla.org/MPL/2.0/.   *
+***************************************************/
+
+#ifndef _CONFIG_H_
+#define _CONFIG_H_
+
+#mesondefine BUILD_SHARED
+#mesondefine OPT_USE_EXCEPTIONS
+#mesondefine OPT_USE_RTTI
+
+#ifdef BUILD_SHARED
+  // From https://gcc.gnu.org/wiki/Visibility
+  #if defined _WIN32 || defined __CYGWIN__
+    #ifdef BUILDING_LIBRARY
+      #ifdef __GNUC__
+        #define DLL_PUBLIC __attribute__ ((dllexport))
+      #else
+        #define DLL_PUBLIC __declspec(dllexport)
+      #endif //__GNUC__
+    #else
+      #ifdef __GNUC__
+        #define DLL_PUBLIC __attribute__ ((dllimport))
+      #else
+        #define DLL_PUBLIC __declspec(dllimport)
+      #endif //__GNUC__
+    #endif //BUILDING_ENGINE
+    #define DLL_LOCAL
+  #else
+    #if __GNUC__ >= 4
+      #define DLL_PUBLIC __attribute__ ((visibility ("default")))
+      #define DLL_LOCAL  __attribute__ ((visibility ("hidden")))
+    #else
+      #define DLL_PUBLIC
+      #define DLL_LOCAL
+    #endif
+  #endif
+#else
+  #define DLL_PUBLIC
+  #define DLL_LOCAL
+#endif //BUILD_SHARED
+
+#endif //_CONFIG_H_
