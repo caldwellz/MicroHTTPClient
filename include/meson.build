@@ -13,5 +13,5 @@ conffile = configure_file(configuration : conf_data,
 
 
 # Install headers - add others to lib_headers below
-lib_headers = [conffile, 'version.h']
+lib_headers = [conffile, 'version.h', 'MHC_config.h', 'MHC_context.h', 'MHC_helpers.h', 'MHC_params.h', 'MHC_requests.h', 'MHC_response.h', 'MHC_stringutils.h']
 install_headers(lib_headers, subdir : meson.project_name())

@@ -3,7 +3,7 @@ cppcomp = meson.get_compiler('cpp')
 
 
 # List sources and dependencies - version file comes later
-lib_srcs = files([])
+lib_srcs = files(['MHC_helpers.c', 'MHC_requests.c', 'MHC_stringutils.c'])
 lib_deps = []
 
 

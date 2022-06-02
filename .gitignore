@@ -3,6 +3,9 @@ build
 .build
 _build
 
+# IDE directories
+.vscode
+
 # Prerequisites
 *.d
 

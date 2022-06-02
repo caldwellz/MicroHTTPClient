@@ -1,5 +1,4 @@
 /***************************************************
-* config.h: Build-time configuration               *
 * Copyright (C)                                    *
 ****************************************************
 * This Source Code Form is subject to the terms of *
@@ -8,16 +7,16 @@
 * can obtain one at http://mozilla.org/MPL/2.0/.   *
 ***************************************************/
 
-#ifndef _MHC_CONFIG_H_
-#define _MHC_CONFIG_H_
+#ifndef _MHC_RESPONSE_H_
+#define _MHC_RESPONSE_H_
+#include "MHC_config.h"
+#include "MHC_helpers.h"
 
-#ifdef BUILDING_LIBRARY
-  #include <config.h>
-  #include <version.h>
-#else
-  #define NDEBUG
-  #define DLL_PUBLIC
-  #define DLL_LOCAL
-#endif
+typedef struct MHC_response {
+  status_t status;
+  media_type_t contentType;
+  byte_t* body;
+  length_t bodyLen;
+} MHC_response;
 
-#endif //_MHC_CONFIG_H_
+#endif //_MHC_RESPONSE_H_

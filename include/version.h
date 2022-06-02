@@ -11,7 +11,7 @@
 #ifndef _VERSION_H_
 #define _VERSION_H_
 
-#include <config.h>
+#include "MHC_config.h"
 
 #ifdef __cplusplus
 extern "C" {

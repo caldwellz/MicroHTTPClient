@@ -1,5 +1,7 @@
 tests = [
-    ['version', '.c']]
+    ['version', '.c'],
+    ['post-request', '.c']
+]
 
 # Test dependencies
 test_deps = lib_deps + []

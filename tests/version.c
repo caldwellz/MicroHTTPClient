@@ -30,7 +30,7 @@ int main(void)
     assert(strlen(PROJECT_COMPILER_VERSION));
 
     // Log the version strings
-    printf("%s %s-%s (%s-%s)", PROJECT_NAME, PROJECT_VERSION, PROJECT_REVISION, PROJECT_COMPILER, PROJECT_COMPILER_VERSION);
+    printf("%s %s-%s (%s-%s)\n", PROJECT_NAME, PROJECT_VERSION, PROJECT_REVISION, PROJECT_COMPILER, PROJECT_COMPILER_VERSION);
 
     return 0;
 }
