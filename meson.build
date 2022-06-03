@@ -1,13 +1,13 @@
-project('MHC', ['c', 'cpp']
+project('MHC', ['c']
   , version : '0.0.1'
-  , default_options : ['buildtype=debug', 'warning_level=3', 'cpp_eh=none', 'cpp_rtti=false', 'cpp_std=c++14', 'prefix=/usr/local'])
+  , default_options : ['buildtype=debug', 'warning_level=3', 'c_std=c99', 'prefix=/usr/local'])
 
 
 # Add DEBUG/NDEBUG defines
 if get_option('buildtype').to_lower() == 'debug'
-  add_project_arguments('-DDEBUG', language: ['c', 'cpp'])
+  add_project_arguments('-DDEBUG', language: ['c'])
 else
-  add_project_arguments('-DNDEBUG', language: ['c', 'cpp'])
+  add_project_arguments('-DNDEBUG', language: ['c'])
 endif
 
 

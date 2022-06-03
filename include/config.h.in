@@ -12,8 +12,6 @@
 #define _CONFIG_H_
 
 #mesondefine BUILD_SHARED
-#mesondefine OPT_USE_EXCEPTIONS
-#mesondefine OPT_USE_RTTI
 
 #ifdef BUILD_SHARED
   // From https://gcc.gnu.org/wiki/Visibility

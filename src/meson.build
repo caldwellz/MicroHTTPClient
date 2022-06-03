@@ -1,5 +1,5 @@
 # Get compiler details - used in version info and finding dependencies
-cppcomp = meson.get_compiler('cpp')
+ccomp = meson.get_compiler('c')
 
 
 # List sources and dependencies - version file comes later
@@ -17,8 +17,8 @@ version_data = configuration_data()
 version_data.set('name', meson.project_name())
 version_data.set('version', meson.project_version())
 version_data.set('vcs_tag_placeholder', '@VCS_TAG@')
-version_data.set('compiler', cppcomp.get_id())
-version_data.set('compiler_version', cppcomp.version())
+version_data.set('compiler', ccomp.get_id())
+version_data.set('compiler_version', ccomp.version())
 versionpre = configure_file(configuration : version_data
   , input : 'version.c.in.pre'
   , output : 'version.c.in')
