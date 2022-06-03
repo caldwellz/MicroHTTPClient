@@ -1,6 +1,7 @@
 tests = [
     ['version', '.c'],
-    ['post-request', '.c']
+    ['post-request', '.c'],
+    ['request-format', '.c']
 ]
 
 # Test dependencies

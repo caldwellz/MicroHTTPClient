@@ -15,10 +15,10 @@ static MHC_response res;
 static byte_t reqBuf[MHC_REQUEST_BUFFER_SIZE];
 static byte_t resBuf[MHC_RESPONSE_BUFFER_SIZE];
 
-MHC_response* MHC_directRequest(MHC_context* ctx, MHC_params* params) {
+status_t MHC_formatRequest(const byte_t* buf, length_t bufLen, MHC_params* params) {
   char u16Str[7];
-  if (ctx == NULL || params == NULL)
-    return NULL;
+  if (buf == NULL || bufLen <= 0 || params == NULL)
+    return STATUS_INVALID_PARAMS;
 
   // Request string
   const char * headTokens[3] = {
@@ -26,49 +26,65 @@ MHC_response* MHC_directRequest(MHC_context* ctx, MHC_params* params) {
     params->path,
     "HTTP/1.1"
   };
-  length_t reqLen = tokncpy(reqBuf, MHC_REQUEST_BUFFER_SIZE, headTokens, 3, " ", "\r\n");
+  length_t bufIndex = tokncpy(buf, bufLen, headTokens, 3, " ", "\r\n");
 
   // Host, including port if non-default
-  reqLen += MHC_addHeader(reqBuf + reqLen, MHC_REQUEST_BUFFER_SIZE - reqLen, HEADER_HOST, params->hostname);
+  bufIndex += MHC_addHeader(buf + bufIndex, bufLen - bufIndex, HEADER_HOST, params->hostname);
   if (params->port != 80) {
     u16Str[0] = ':';
     u8_t u16StrLen = u16tostr(params->port, u16Str + 1, 6) + 1;
-    reqLen -= 2; // Erase the header CRLF
-    reqLen += bufncpy(reqBuf + reqLen, MHC_REQUEST_BUFFER_SIZE - reqLen, u16Str, u16StrLen);
-    reqLen += bufncpy(reqBuf + reqLen, MHC_REQUEST_BUFFER_SIZE - reqLen, "\r\n", 2);
+    bufIndex -= 2; // Erase the header CRLF
+    bufIndex += bufncpy(buf + bufIndex, bufLen - bufIndex, u16Str, u16StrLen);
+    bufIndex += bufncpy(buf + bufIndex, bufLen - bufIndex, "\r\n", 2);
   }
 
   // User-Agent
-  reqLen += MHC_addHeader(reqBuf + reqLen, MHC_REQUEST_BUFFER_SIZE - reqLen, HEADER_USER_AGENT, MHC_USER_AGENT);
+  bufIndex += MHC_addHeader(buf + bufIndex, bufLen - bufIndex, HEADER_USER_AGENT, MHC_USER_AGENT);
 
   // Media type headers
   media_type_t media = params->accept;
   if (media > MEDIA_TYPE_NONE && media < _MEDIA_TYPE_RESERVED)
-    reqLen += MHC_addMediaType(reqBuf + reqLen, MHC_REQUEST_BUFFER_SIZE - reqLen, HEADER_ACCEPT, media);
+    bufIndex += MHC_addMediaType(buf + bufIndex, bufLen - bufIndex, HEADER_ACCEPT, media);
   media = params->contentType;
   if (media > MEDIA_TYPE_NONE && media < _MEDIA_TYPE_RESERVED)
-    reqLen += MHC_addMediaType(reqBuf + reqLen, MHC_REQUEST_BUFFER_SIZE - reqLen, HEADER_CONTENT_TYPE, media);
+    bufIndex += MHC_addMediaType(buf + bufIndex, bufLen - bufIndex, HEADER_CONTENT_TYPE, media);
 
   // Request body
   if (params->bodyLen > 0) {
     u16tostr(params->bodyLen, u16Str, 7);
-    reqLen += MHC_addHeader(reqBuf + reqLen, MHC_REQUEST_BUFFER_SIZE - reqLen, HEADER_CONTENT_LENGTH, u16Str);
-    reqLen += bufncpy(reqBuf + reqLen, MHC_REQUEST_BUFFER_SIZE - reqLen, "\r\n", 2);
-    reqLen += bufncpy(reqBuf + reqLen, MHC_REQUEST_BUFFER_SIZE - reqLen, params->body, params->bodyLen);
+    bufIndex += MHC_addHeader(buf + bufIndex, bufLen - bufIndex, HEADER_CONTENT_LENGTH, u16Str);
+    bufIndex += bufncpy(buf + bufIndex, bufLen - bufIndex, "\r\n", 2);
+    bufIndex += bufncpy(buf + bufIndex, bufLen - bufIndex, params->body, params->bodyLen);
   }
 
-  // Clear the remainder of the buffers and make sure they still get null-terminated if they are full.
-  // TODO: Check if they are too full and return a status as appropriate
-  bufnset(reqBuf + reqLen, MHC_REQUEST_BUFFER_SIZE - reqLen, '\0');
+  // The bufncpy and MHC_add* calls above will fill up to, but never past, the end of buf,
+  // and will not include a null terminator. So, simply verify that there's still space for one.
+  if (bufIndex >= bufLen)
+    return STATUS_BUFFER_EXCEEDED;
+
+  // Null out the remainder of the buffer
+  bufnset(buf + bufIndex, bufLen - bufIndex, '\0');
+
+  return STATUS_SUCCESS;
+}
+
+MHC_response* MHC_directRequest(MHC_context* ctx, MHC_params* params) {
+  if (ctx == NULL || params == NULL)
+    return NULL;
+
+  status_t status = MHC_formatRequest(reqBuf, MHC_REQUEST_BUFFER_SIZE, params);
+  if (status != STATUS_SUCCESS)
+    return NULL;
+
+  // Clear the remainder of the response buffer.
   bufnset(resBuf, MHC_RESPONSE_BUFFER_SIZE, '\0');
-  reqBuf[MHC_REQUEST_BUFFER_SIZE - 1] = '\0';
 
   // Fill response
   // FIXME: The response is currently just set to the request values for testing purposes
   res.status = 200;
-  res.contentType = media;
+  res.contentType = params->contentType;
   res.body = reqBuf;
-  res.bodyLen = reqLen;
+  res.bodyLen = MHC_REQUEST_BUFFER_SIZE;
 
   return &res;
 }
