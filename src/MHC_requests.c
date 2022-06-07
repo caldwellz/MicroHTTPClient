@@ -38,8 +38,9 @@ status_t MHC_formatRequest(const byte_t* buf, length_t bufLen, MHC_params* param
     bufIndex += bufncpy(buf + bufIndex, bufLen - bufIndex, "\r\n", 2);
   }
 
-  // User-Agent
+  // User-Agent and Connection
   bufIndex += MHC_addHeader(buf + bufIndex, bufLen - bufIndex, HEADER_USER_AGENT, MHC_USER_AGENT);
+  bufIndex += MHC_addHeader(buf + bufIndex, bufLen - bufIndex, HEADER_CONNECTION, "close");
 
   // Media type headers
   media_type_t media = params->accept;
@@ -55,6 +56,8 @@ status_t MHC_formatRequest(const byte_t* buf, length_t bufLen, MHC_params* param
     bufIndex += MHC_addHeader(buf + bufIndex, bufLen - bufIndex, HEADER_CONTENT_LENGTH, u16Str);
     bufIndex += bufncpy(buf + bufIndex, bufLen - bufIndex, "\r\n", 2);
     bufIndex += bufncpy(buf + bufIndex, bufLen - bufIndex, params->body, params->bodyLen);
+  } else {
+    bufIndex += bufncpy(buf + bufIndex, bufLen - bufIndex, "\r\n", 2);
   }
 
   // The bufncpy and MHC_add* calls above will fill up to, but never past, the end of buf,
@@ -72,19 +75,33 @@ MHC_response* MHC_directRequest(MHC_context* ctx, MHC_params* params) {
   if (ctx == NULL || params == NULL)
     return NULL;
 
-  status_t status = MHC_formatRequest(reqBuf, MHC_REQUEST_BUFFER_SIZE, params);
-  if (status != STATUS_SUCCESS)
+  ctx->sock = ctx->connect(params->hostname, params->port);
+  if (ctx->sock == NULL)
     return NULL;
 
-  // Clear the remainder of the response buffer.
-  bufnset(resBuf, MHC_RESPONSE_BUFFER_SIZE, '\0');
+  status_t status = MHC_formatRequest(reqBuf, MHC_REQUEST_BUFFER_SIZE, params);
+  if (status != STATUS_SUCCESS) {
+    ctx->disconnect(ctx->sock);
+    return NULL;
+  }
+
+  length_t reqLen = strtoklen(reqBuf, "\0");
+  length_t sentLen = ctx->send(ctx->sock, reqBuf, reqLen);
+  if (sentLen != reqLen) {
+    ctx->disconnect(ctx->sock);
+    return NULL;
+  }
 
   // Fill response
-  // FIXME: The response is currently just set to the request values for testing purposes
+  // FIXME: Parse the response
+  length_t resLen = ctx->recv(ctx->sock, resBuf, MHC_RESPONSE_BUFFER_SIZE - 1);
+  ctx->disconnect(ctx->sock);
+  ctx->sock = NULL;
+  bufnset(resBuf + resLen, MHC_RESPONSE_BUFFER_SIZE - resLen, '\0');
   res.status = 200;
-  res.contentType = params->contentType;
-  res.body = reqBuf;
-  res.bodyLen = MHC_REQUEST_BUFFER_SIZE;
+  res.contentType = params->accept;
+  res.body = resBuf;
+  res.bodyLen = resLen;
 
   return &res;
 }

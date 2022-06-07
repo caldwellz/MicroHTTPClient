@@ -31,7 +31,8 @@ const char * header_list[] = {
   "Content-Length",
   "Host",
   "Referrer",
-  "User-Agent"
+  "User-Agent",
+  "Connection"
 };
 
 bool_t MHC_isErrorStatus(status_t status) {

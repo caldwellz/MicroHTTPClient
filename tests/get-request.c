@@ -1,5 +1,5 @@
 /***************************************************
-* Test - POST request                              *
+* Test - GET request                               *
 * Copyright (C)                                    *
 ****************************************************
 * This Source Code Form is subject to the terms of *
@@ -13,11 +13,12 @@
 #include <stdio.h>
 #include <string.h>
 
+// Defines an example MHC_context (ctx)
+#include "SDL_net_context.inc"
+
 int main(void)
 {
-  const char * body = "{\"foo\":true,\"bar\":2}";
-  MHC_context context;
-  MHC_response* res = MHC_post(&context, "http://foo.bar:40/?page=1", body, strlen(body), MEDIA_TYPE_CBOR, MEDIA_TYPE_JSON);
+  MHC_response* res = MHC_get(&ctx, "http://example.com/", MEDIA_TYPE_HTML);
   assert(res);
   printf("[Status:%i ContentType:%i BodyLen:%i]\n--------------------------------------\n%s\n--------------------------------------\n",
     res->status, res->contentType, res->bodyLen, res->body);

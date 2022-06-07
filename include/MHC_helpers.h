@@ -53,6 +53,7 @@ typedef enum header_t {
   HEADER_HOST,
   HEADER_REFERRER,
   HEADER_USER_AGENT,
+  HEADER_CONNECTION,
   _HEADER_RESERVED
 } header_t;
 
