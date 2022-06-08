@@ -95,7 +95,8 @@ media_type_t MHC_identifyMediaType(const char * type, length_t typeLen) {
     return MEDIA_TYPE_NONE;
 
   for (u16_t i = 1; i < _MEDIA_TYPE_RESERVED; ++i) {
-    if (cistrncmp(media_types[i], type, typeLen) == 0)
+    length_t internalTypeLen = strtoklen(media_types[i], "\0");
+    if (cistrncmp(media_types[i], type, MIN(typeLen, internalTypeLen)) == 0)
       return i;
   }
 
@@ -112,6 +113,33 @@ length_t MHC_addHeader(byte_t * dest, const length_t destLen, header_t header, c
   };
 
   return tokncpy(dest, destLen, tokens, 2, ": ", "\r\n");
+}
+
+length_t MHC_parseHeader(const byte_t* buf, const length_t bufLen, header_t* headerTypeOut, byte_t** contentPtrOut, length_t* contentLenOut) {
+  if (buf == NULL || bufLen < 2 || headerTypeOut == NULL || contentPtrOut == NULL || contentLenOut == NULL)
+    return 0;
+
+  // Is this actually a header, or the start of the body section?
+  length_t headerLen = strtoklen(buf, "\r\n");
+  if (headerLen == 0) {
+    *headerTypeOut = HEADER_NONE;
+    *contentPtrOut = buf + 2;
+    *contentLenOut = bufLen - 2;
+    return bufLen;
+  }
+
+  // Split and match the header
+  length_t headerTypeLen = strtoklen(buf, ":");
+  *contentPtrOut = strseektok(buf + headerTypeLen, contentLenOut, ": ;\r\n");
+  *headerTypeOut = HEADER_OTHER;
+  for (header_t headerType = 1; headerType < _HEADER_RESERVED; ++headerType) {
+    if (cistrncmp(buf, header_list[headerType], headerTypeLen) == 0) {
+      *headerTypeOut = headerType;
+      break;
+    }
+  }
+
+  return headerLen;
 }
 
 length_t MHC_addMediaType(byte_t * dest, const length_t destLen, header_t header, media_type_t type) {

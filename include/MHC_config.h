@@ -12,7 +12,7 @@
 
 // Application-specific config
 #define MHC_REQUEST_BUFFER_SIZE 512
-#define MHC_RESPONSE_BUFFER_SIZE 512
+#define MHC_RESPONSE_BUFFER_SIZE 2048
 #define MHC_USER_AGENT "MicroHTTPClient/0.0.1"
 
 // Standard constants, types, and math things

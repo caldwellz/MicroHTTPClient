@@ -16,12 +16,14 @@
 // Defines an example MHC_context (ctx)
 #include "SDL_net_context.inc"
 
+static const char url[] = "http://example.com/";
+
 int main(void)
 {
-  MHC_response* res = MHC_get(&ctx, "http://example.com/", MEDIA_TYPE_HTML);
+  MHC_response* res = MHC_get(&ctx, url, MEDIA_TYPE_HTML);
   assert(res);
-  printf("[Status:%i ContentType:%i BodyLen:%i]\n--------------------------------------\n%s\n--------------------------------------\n",
-    res->status, res->contentType, res->bodyLen, res->body);
+  printf("[GET %s]\n[Status:%i ContentType:%i BodyLen:%i]\n--------------------------------------\n%s\n--------------------------------------\n",
+    url, res->status, res->contentType, res->bodyLen, res->body);
 
   return 0;
 }

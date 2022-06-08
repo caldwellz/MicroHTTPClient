@@ -54,7 +54,8 @@ typedef enum header_t {
   HEADER_REFERRER,
   HEADER_USER_AGENT,
   HEADER_CONNECTION,
-  _HEADER_RESERVED
+  _HEADER_RESERVED,
+  HEADER_OTHER = 65534
 } header_t;
 
 typedef enum host_error_t {
@@ -75,6 +76,8 @@ DLL_PUBLIC const char * MHC_getMediaType(media_type_t type);
 DLL_PUBLIC media_type_t MHC_identifyMediaType(const char * type, length_t typeLen);
 
 DLL_PUBLIC length_t MHC_addHeader(byte_t * dest, const length_t destLen, header_t header, const char * content);
+
+DLL_PUBLIC length_t MHC_parseHeader(const byte_t* buf, const length_t bufLen, header_t* headerTypeOut, byte_t** contentPtrOut, length_t* contentLenOut);
 
 DLL_PUBLIC length_t MHC_addMediaType(byte_t * dest, const length_t destLen, header_t header, media_type_t type);
 
