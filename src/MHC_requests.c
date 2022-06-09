@@ -13,11 +13,12 @@
 static const char MHC_HTTP_VERSION[] = "HTTP/1.1";
 static MHC_params sharedParams;
 static MHC_response sharedResponse;
-static byte_t reqBuf[MHC_REQUEST_BUFFER_SIZE];
-static byte_t resBuf[MHC_RESPONSE_BUFFER_SIZE];
+static byte_t sharedBuffer[MHC_BUFFER_SIZE];
 
-status_t MHC_formatRequest(const byte_t* buf, length_t bufLen, MHC_params* params) {
+status_t MHC_formatRequest(byte_t* buf, length_t bufLen, length_t* reqLenOut, MHC_params* params) {
   char u16Str[7];
+  if (reqLenOut != NULL)
+    *reqLenOut = 0;
   if (buf == NULL || bufLen <= 0 || params == NULL)
     return STATUS_INVALID_PARAMS;
 
@@ -66,8 +67,10 @@ status_t MHC_formatRequest(const byte_t* buf, length_t bufLen, MHC_params* param
   if (bufIndex >= bufLen)
     return STATUS_BUFFER_EXCEEDED;
 
-  // Null out the remainder of the buffer
-  bufnset(buf + bufIndex, bufLen - bufIndex, '\0');
+  // Terminate the end of the response data
+  buf[bufIndex] = '\0';
+  if (reqLenOut != NULL)
+    *reqLenOut = bufIndex;
 
   return STATUS_SUCCESS;
 }
@@ -126,49 +129,56 @@ MHC_response* MHC_directRequest(MHC_context* ctx, MHC_params* params) {
   if (ctx->sock == NULL)
     return NULL;
 
-  status_t status = MHC_formatRequest(reqBuf, MHC_REQUEST_BUFFER_SIZE, params);
+  length_t bufLen;
+  status_t status = MHC_formatRequest(sharedBuffer, MHC_BUFFER_SIZE, &bufLen, params);
   if (status != STATUS_SUCCESS) {
     ctx->disconnect(ctx->sock);
     return NULL;
   }
 
-  length_t reqLen = strtoklen(reqBuf, "\0");
-  length_t sentLen = ctx->send(ctx->sock, reqBuf, reqLen);
-  if (sentLen != reqLen) {
+  length_t sentLen = ctx->send(ctx->sock, sharedBuffer, bufLen);
+  if (sentLen != bufLen) {
     ctx->disconnect(ctx->sock);
     return NULL;
   }
 
   // Fill response buffer, verifying no overflow by using the fact that a spot needs to remain for a null terminator
-  length_t recvLen, resLen = 0;
+  length_t recvLen;
+  bufLen = 0;
   do {
-    recvLen = ctx->recv(ctx->sock, resBuf + resLen, MHC_RESPONSE_BUFFER_SIZE - resLen);
-    resLen += recvLen;
+    recvLen = ctx->recv(ctx->sock, sharedBuffer + bufLen, MHC_BUFFER_SIZE - bufLen);
+    bufLen += recvLen;
   } while(recvLen > 0);
   ctx->disconnect(ctx->sock);
   ctx->sock = NULL;
-  if (resLen >= MHC_RESPONSE_BUFFER_SIZE)
+  if (bufLen >= MHC_BUFFER_SIZE)
     return NULL;
 
-  resBuf[resLen] = '\0';
-  MHC_parseResponse(&sharedResponse, resBuf, resLen);
+  sharedBuffer[bufLen] = '\0';
+  MHC_parseResponse(&sharedResponse, sharedBuffer, bufLen);
 
   return &sharedResponse;
 }
 
 MHC_response* MHC_request(MHC_context* ctx, const char* url, MHC_params* params) {
   // Sanity checks
+  if (params->hostname && params->path && url == NULL)
+    return MHC_directRequest(ctx, params);
   if (ctx == NULL || url == NULL || params == NULL)
     return NULL;
 
-  if (params->hostname && params->path)
-    return MHC_directRequest(ctx, params);
+  // Use the shared buffer to temporarily store the host & path.
+  // Since they get copied into the request, they need to start at least this far into the buffer:
+  // = longest HTTP verb + ' ' + pathLen + ' ' + HTTP version + CRLF + "Host: "
+  // The URL length is a lazy approximation of both the host and path lengths.
+  length_t urlLen = strtoklen(url, "\0");
+  length_t bufIndex = 8 + urlLen + sizeof(MHC_HTTP_VERSION) + 8;
+  if (MHC_BUFFER_SIZE < bufIndex + (urlLen * 2))
+    return NULL;
 
-  // Use the response buffer as temp storage for the host and path
-  length_t bufLen = MHC_RESPONSE_BUFFER_SIZE / 2;
-  params->hostname = resBuf;
-  params->path = resBuf + bufLen;
-  host_error_t error = MHC_getHostFromURL(url, sharedParams.hostname, bufLen, &sharedParams.port, sharedParams.path, bufLen);
+  params->hostname = sharedBuffer + bufIndex;
+  params->path = params->hostname + urlLen;
+  host_error_t error = MHC_getHostFromURL(url, params->hostname, urlLen, &params->port, params->path, urlLen);
   if (error != HOST_OK)
     return NULL;
 

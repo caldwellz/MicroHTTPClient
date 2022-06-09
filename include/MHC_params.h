@@ -13,11 +13,11 @@
 #include "MHC_helpers.h"
 
 typedef struct MHC_params {
-  byte_t * hostname;
-  u16_t port;
-  byte_t * path;
   const char * method;
   length_t methodLen;
+  const char * hostname;
+  u16_t port;
+  const char * path;
   media_type_t accept;
   media_type_t contentType;
   byte_t * body;

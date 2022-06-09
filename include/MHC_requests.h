@@ -14,7 +14,7 @@
 #include "MHC_params.h"
 #include "MHC_response.h"
 
-DLL_PUBLIC status_t MHC_formatRequest(const byte_t* buf, length_t bufLen, MHC_params* params);
+DLL_PUBLIC status_t MHC_formatRequest(byte_t* buf, length_t bufLen, length_t* reqLenOut, MHC_params* params);
 DLL_PUBLIC MHC_response* MHC_directRequest(MHC_context* ctx, MHC_params* params);
 DLL_PUBLIC MHC_response* MHC_request(MHC_context* ctx, const char* url, MHC_params* params);
 DLL_PUBLIC MHC_response* MHC_get(MHC_context* ctx, const char* url, media_type_t accept);

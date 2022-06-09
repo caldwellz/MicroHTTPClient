@@ -15,7 +15,8 @@
 
 int main(void)
 {
-  byte_t reqBuf[MHC_REQUEST_BUFFER_SIZE];
+  length_t bufLen;
+  byte_t reqBuf[MHC_BUFFER_SIZE];
   MHC_params params = {
     .hostname = "example.com",
     .port = 80,
@@ -28,12 +29,12 @@ int main(void)
     .bodyLen = 24,
   };
 
-  assert(STATUS_INVALID_PARAMS == MHC_formatRequest(NULL, MHC_REQUEST_BUFFER_SIZE, &params));
-  assert(STATUS_INVALID_PARAMS == MHC_formatRequest(reqBuf, MHC_REQUEST_BUFFER_SIZE, NULL));
-  assert(STATUS_INVALID_PARAMS == MHC_formatRequest(reqBuf, 0, &params));
-  assert(STATUS_BUFFER_EXCEEDED == MHC_formatRequest(reqBuf, 1, &params));
-  assert(STATUS_SUCCESS == MHC_formatRequest(reqBuf, MHC_REQUEST_BUFFER_SIZE, &params));
-  printf("%s\n", reqBuf);
+  assert(STATUS_INVALID_PARAMS == MHC_formatRequest(NULL, MHC_BUFFER_SIZE, &bufLen, &params));
+  assert(STATUS_INVALID_PARAMS == MHC_formatRequest(reqBuf, MHC_BUFFER_SIZE, &bufLen, NULL));
+  assert(STATUS_INVALID_PARAMS == MHC_formatRequest(reqBuf, 0, &bufLen, &params));
+  assert(STATUS_BUFFER_EXCEEDED == MHC_formatRequest(reqBuf, 1, NULL, &params));
+  assert(STATUS_SUCCESS == MHC_formatRequest(reqBuf, MHC_BUFFER_SIZE, &bufLen, &params));
+  printf("[Length:%i]\n%s\n", bufLen, reqBuf);
 
   return 0;
 }

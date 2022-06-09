@@ -10,9 +10,11 @@
 #ifndef _MHC_CONFIG_H_
 #define _MHC_CONFIG_H_
 
-// Application-specific config
-#define MHC_REQUEST_BUFFER_SIZE 512
-#define MHC_RESPONSE_BUFFER_SIZE 2048
+// ** Application-specific config **
+// The buffer should be big enough to hold the largest of: a full request,
+// a full response, or (2 * longest URL) + 25 if using auto URL decoding.
+// Between 1k and 4k is usually sufficient, depending on expected content lengths.
+#define MHC_BUFFER_SIZE 2048
 #define MHC_USER_AGENT "MicroHTTPClient/0.0.1"
 
 // Standard constants, types, and math things
