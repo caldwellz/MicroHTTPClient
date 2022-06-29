@@ -25,7 +25,8 @@ typedef enum status_t {
   STATUS_INCOMPLETE_TRANSMIT = -3,
   STATUS_INCOMPLETE_RESPONSE = -4,
   STATUS_INVALID_RESPONSE = -5,
-  STATUS_BUFFER_EXCEEDED = -6
+  STATUS_BUFFER_EXCEEDED = -6,
+  STATUS_HOST_ERROR = -7
 } status_t;
 
 /** Supported media types for identification */

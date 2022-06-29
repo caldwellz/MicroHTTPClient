@@ -12,7 +12,6 @@
 
 static const char MHC_HTTP_VERSION[] = "HTTP/1.1";
 static MHC_params sharedParams;
-static MHC_response sharedResponse;
 static byte_t sharedBuffer[MHC_BUFFER_SIZE];
 
 status_t MHC_formatRequest(byte_t* buf, length_t bufLen, length_t* reqLenOut, MHC_params* params) {
@@ -75,23 +74,36 @@ status_t MHC_formatRequest(byte_t* buf, length_t bufLen, length_t* reqLenOut, MH
   return STATUS_SUCCESS;
 }
 
+status_t MHC_parseStatus(const byte_t* buf, const length_t bufLen, length_t* statusLenOut) {
+  if (buf == NULL || bufLen <= 0)
+    return STATUS_INVALID_PARAMS;
+
+  // Check HTTP version header
+  const length_t versionLen = sizeof(MHC_HTTP_VERSION) - 1;
+  if (bufLen < versionLen || cistrncmp(buf, MHC_HTTP_VERSION, versionLen) != 0)
+    return STATUS_INVALID_RESPONSE;
+
+  // Parse status code
+  length_t statusLen = strtoklen(buf + versionLen, "\r\n");
+  status_t status = strtou16(buf + versionLen, statusLen);
+  if (statusLenOut != NULL)
+    *statusLenOut = statusLen;
+
+  return status;
+}
+
 status_t MHC_parseResponse(MHC_response* res, const byte_t* buf, const length_t bufLen) {
   if (res == NULL || buf == NULL || bufLen <= 0)
     return STATUS_INVALID_PARAMS;
 
   // Check HTTP version header
-  const length_t versionLen = sizeof(MHC_HTTP_VERSION) - 1;
-  if (cistrncmp(buf, MHC_HTTP_VERSION, versionLen) != 0)
-    return STATUS_INVALID_RESPONSE;
-
-  // Status code and default content type
-  length_t bufIndex = versionLen;
-  length_t statusLen = strtoklen(buf + bufIndex, "\r\n");
-  res->status = strtou16(buf + bufIndex, statusLen);
-  res->contentType = MEDIA_TYPE_NONE;
-  bufIndex += statusLen;
+  length_t bufIndex;
+  res->status = MHC_parseStatus(buf, bufLen, &bufIndex);
+  if (MHC_isErrorStatus(res->status))
+    return res->status;
 
   // Seek to and loop through headers
+  res->contentType = MEDIA_TYPE_NONE;
   header_t type = _HEADER_RESERVED;
   do {
     // Skip CRLF and verify the response data hasn't ended prematurely
@@ -121,25 +133,27 @@ status_t MHC_parseResponse(MHC_response* res, const byte_t* buf, const length_t 
   return res->status;
 }
 
-MHC_response* MHC_directRequest(MHC_context* ctx, MHC_params* params) {
+status_t MHC_directRequest(MHC_context* ctx, MHC_response* res, MHC_params* params) {
   if (ctx == NULL || params == NULL)
-    return NULL;
+    return STATUS_INVALID_PARAMS;
 
   ctx->sock = ctx->connect(params->hostname, params->port);
   if (ctx->sock == NULL)
-    return NULL;
+    return STATUS_CONNECTION_FAILED;
 
   length_t bufLen;
-  status_t status = MHC_formatRequest(sharedBuffer, MHC_BUFFER_SIZE, &bufLen, params);
-  if (status != STATUS_SUCCESS) {
+  status_t formatStatus = MHC_formatRequest(sharedBuffer, MHC_BUFFER_SIZE, &bufLen, params);
+  if (MHC_isErrorStatus(formatStatus)) {
     ctx->disconnect(ctx->sock);
-    return NULL;
+    ctx->sock = NULL;
+    return formatStatus;
   }
 
   length_t sentLen = ctx->send(ctx->sock, sharedBuffer, bufLen);
   if (sentLen != bufLen) {
     ctx->disconnect(ctx->sock);
-    return NULL;
+    ctx->sock = NULL;
+    return STATUS_INCOMPLETE_TRANSMIT;
   }
 
   // Fill response buffer, verifying no overflow by using the fact that a spot needs to remain for a null terminator
@@ -152,20 +166,21 @@ MHC_response* MHC_directRequest(MHC_context* ctx, MHC_params* params) {
   ctx->disconnect(ctx->sock);
   ctx->sock = NULL;
   if (bufLen >= MHC_BUFFER_SIZE)
-    return NULL;
-
+    return STATUS_BUFFER_EXCEEDED;
   sharedBuffer[bufLen] = '\0';
-  MHC_parseResponse(&sharedResponse, sharedBuffer, bufLen);
 
-  return &sharedResponse;
+  if (res == NULL)
+    return MHC_parseStatus(sharedBuffer, bufLen, NULL);
+
+  return MHC_parseResponse(res, sharedBuffer, bufLen);
 }
 
-MHC_response* MHC_request(MHC_context* ctx, const char* url, MHC_params* params) {
+status_t MHC_request(MHC_context* ctx, const char* url, MHC_response* res, MHC_params* params) {
   // Sanity checks
   if (params->hostname && params->path && url == NULL)
-    return MHC_directRequest(ctx, params);
+    return MHC_directRequest(ctx, res, params);
   if (ctx == NULL || url == NULL || params == NULL)
-    return NULL;
+    return STATUS_INVALID_PARAMS;
 
   // Use the shared buffer to temporarily store the host & path.
   // Since they get copied into the request, they need to start at least this far into the buffer:
@@ -174,67 +189,67 @@ MHC_response* MHC_request(MHC_context* ctx, const char* url, MHC_params* params)
   length_t urlLen = strtoklen(url, "\0");
   length_t bufIndex = 8 + urlLen + sizeof(MHC_HTTP_VERSION) + 8;
   if (MHC_BUFFER_SIZE < bufIndex + (urlLen * 2))
-    return NULL;
+    return STATUS_BUFFER_EXCEEDED;
 
   params->hostname = sharedBuffer + bufIndex;
   params->path = params->hostname + urlLen;
   host_error_t error = MHC_getHostFromURL(url, params->hostname, urlLen, &params->port, params->path, urlLen);
   if (error != HOST_OK)
-    return NULL;
+    return STATUS_HOST_ERROR;
 
-  MHC_response * res = MHC_directRequest(ctx, params);
+  status_t status = MHC_directRequest(ctx, res, params);
   params->hostname = NULL;
   params->path = NULL;
-  return res;
+  return status;
 }
 
-MHC_response* MHC_get(MHC_context* ctx, const char* url, media_type_t accept) {
+status_t MHC_get(MHC_context* ctx, const char* url, MHC_response* res, media_type_t accept) {
   sharedParams.method = "GET";
   sharedParams.methodLen = 3;
   sharedParams.accept = accept;
   sharedParams.contentType = MEDIA_TYPE_NONE;
   sharedParams.body = NULL;
   sharedParams.bodyLen = 0;
-  return MHC_request(ctx, url, &sharedParams);
+  return MHC_request(ctx, url, res, &sharedParams);
 }
 
-MHC_response* MHC_put(MHC_context* ctx, const char* url, const byte_t* body, length_t bodyLen, media_type_t accept, media_type_t contentType) {
+status_t MHC_put(MHC_context* ctx, const char* url, MHC_response* res, const byte_t* body, length_t bodyLen, media_type_t accept, media_type_t contentType) {
   sharedParams.method = "PUT";
   sharedParams.methodLen = 3;
   sharedParams.accept = accept;
   sharedParams.contentType = contentType;
   sharedParams.body = body;
   sharedParams.bodyLen = bodyLen;
-  return MHC_request(ctx, url, &sharedParams);
+  return MHC_request(ctx, url, res, &sharedParams);
 }
 
-MHC_response* MHC_post(MHC_context* ctx, const char* url, const byte_t* body, length_t bodyLen, media_type_t accept, media_type_t contentType) {
+status_t MHC_post(MHC_context* ctx, const char* url, MHC_response* res, const byte_t* body, length_t bodyLen, media_type_t accept, media_type_t contentType) {
   sharedParams.method = "POST";
   sharedParams.methodLen = 4;
   sharedParams.accept = accept;
   sharedParams.contentType = contentType;
   sharedParams.body = body;
   sharedParams.bodyLen = bodyLen;
-  return MHC_request(ctx, url, &sharedParams);
+  return MHC_request(ctx, url, res, &sharedParams);
 
 }
 
-MHC_response* MHC_patch(MHC_context* ctx, const char* url, const byte_t* body, length_t bodyLen, media_type_t accept, media_type_t contentType) {
+status_t MHC_patch(MHC_context* ctx, const char* url, MHC_response* res, const byte_t* body, length_t bodyLen, media_type_t accept, media_type_t contentType) {
   sharedParams.method = "PATCH";
   sharedParams.methodLen = 5;
   sharedParams.accept = accept;
   sharedParams.contentType = contentType;
   sharedParams.body = body;
   sharedParams.bodyLen = bodyLen;
-  return MHC_request(ctx, url, &sharedParams);
+  return MHC_request(ctx, url, res, &sharedParams);
 }
 
-MHC_response* MHC_delete(MHC_context* ctx, const char* url) {
+status_t MHC_delete(MHC_context* ctx, const char* url, MHC_response* res) {
   sharedParams.method = "DELETE";
   sharedParams.methodLen = 6;
   sharedParams.accept = MEDIA_TYPE_NONE;
   sharedParams.contentType = MEDIA_TYPE_NONE;
   sharedParams.body = NULL;
   sharedParams.bodyLen = 0;
-  return MHC_request(ctx, url, &sharedParams);
+  return MHC_request(ctx, url, res, &sharedParams);
 }

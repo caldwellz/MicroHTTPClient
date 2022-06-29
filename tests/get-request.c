@@ -20,10 +20,12 @@ static const char url[] = "http://example.com/";
 
 int main(void)
 {
-  MHC_response* res = MHC_get(&ctx, url, MEDIA_TYPE_HTML);
-  assert(res);
+  MHC_response res;
+  status_t status = MHC_get(&ctx, url, &res, MEDIA_TYPE_HTML);
+  assert(status == res.status);
+  assert(!MHC_isErrorStatus(status));
   printf("[GET %s]\n[Status:%i ContentType:%i BodyLen:%i]\n--------------------------------------\n%s\n--------------------------------------\n",
-    url, res->status, res->contentType, res->bodyLen, res->body);
+    url, res.status, res.contentType, res.bodyLen, res.body);
 
   return 0;
 }

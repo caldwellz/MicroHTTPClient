@@ -36,7 +36,7 @@ const char * header_list[] = {
 };
 
 bool_t MHC_isErrorStatus(status_t status) {
-  if (status >= STATUS_HTTP_CLIENT_ERROR)
+  if (status >= STATUS_HTTP_CLIENT_ERROR || status < STATUS_SUCCESS)
     return TRUE;
   else
     return FALSE;

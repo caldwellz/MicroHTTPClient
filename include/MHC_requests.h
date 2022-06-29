@@ -15,12 +15,12 @@
 #include "MHC_response.h"
 
 DLL_PUBLIC status_t MHC_formatRequest(byte_t* buf, length_t bufLen, length_t* reqLenOut, MHC_params* params);
-DLL_PUBLIC MHC_response* MHC_directRequest(MHC_context* ctx, MHC_params* params);
-DLL_PUBLIC MHC_response* MHC_request(MHC_context* ctx, const char* url, MHC_params* params);
-DLL_PUBLIC MHC_response* MHC_get(MHC_context* ctx, const char* url, media_type_t accept);
-DLL_PUBLIC MHC_response* MHC_put(MHC_context* ctx, const char* url, const byte_t* body, length_t bodyLen, media_type_t accept, media_type_t contentType);
-DLL_PUBLIC MHC_response* MHC_post(MHC_context* ctx, const char* url, const byte_t* body, length_t bodyLen, media_type_t accept, media_type_t contentType);
-DLL_PUBLIC MHC_response* MHC_patch(MHC_context* ctx, const char* url, const byte_t* body, length_t bodyLen, media_type_t accept, media_type_t contentType);
-DLL_PUBLIC MHC_response* MHC_delete(MHC_context* ctx, const char* url);
+DLL_PUBLIC status_t MHC_directRequest(MHC_context* ctx, MHC_response* res, MHC_params* params);
+DLL_PUBLIC status_t MHC_request(MHC_context* ctx, const char* url, MHC_response* res, MHC_params* params);
+DLL_PUBLIC status_t MHC_get(MHC_context* ctx, const char* url, MHC_response* res, media_type_t accept);
+DLL_PUBLIC status_t MHC_put(MHC_context* ctx, const char* url, MHC_response* res, const byte_t* body, length_t bodyLen, media_type_t accept, media_type_t contentType);
+DLL_PUBLIC status_t MHC_post(MHC_context* ctx, const char* url, MHC_response* res, const byte_t* body, length_t bodyLen, media_type_t accept, media_type_t contentType);
+DLL_PUBLIC status_t MHC_patch(MHC_context* ctx, const char* url, MHC_response* res, const byte_t* body, length_t bodyLen, media_type_t accept, media_type_t contentType);
+DLL_PUBLIC status_t MHC_delete(MHC_context* ctx, const char* url, MHC_response* res);
 
 #endif //_MHC_REQUESTS_H_
