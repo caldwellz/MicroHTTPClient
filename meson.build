@@ -1,5 +1,5 @@
 project('MHC', ['c']
-  , version : '0.0.1'
+  , version : '0.1.0'
   , default_options : ['buildtype=debug', 'warning_level=3', 'c_std=c99', 'prefix=/usr/local'])
 
 
